@@ -1,0 +1,13 @@
+{
+  "metadata": {
+    "properties": {
+      "owner": "Subscriptions Department",
+      "owner_email": "subscriptions@example.com"
+    },
+    "tags": {
+      "email": [
+        "PII"
+      ]
+    }
+  }
+}

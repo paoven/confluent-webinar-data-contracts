@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "namespace": "com.paoven.datacontracts.migrations",
+  "name": "Membership",
+  "fields": [
+    {"name": "start_date", "type": {"type": "int", "logicalType": "date"}},
+    {"name": "end_date", "type": {"type": "int", "logicalType": "date"}},
+    {"name": "email", "type": "string"},
+    {"name": "socialSecurityNumber", "type": "string"}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "ruleSet": {
+    "domainRules": [
+      {
+        "name": "membership-check-email",
+        "kind": "CONDITION",
+        "type": "CEL",
+        "mode": "WRITE",
+        "expr": "message.email.matches(r'.+@.+\\..+')",
+        "onFailure": "DLQ",
+        "params": {
+          "dlq.topic": "membership-dlq"
+        },
+        "disabled": false
+      }
+    ]
+  }
+}

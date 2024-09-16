@@ -1,0 +1,22 @@
+{
+  "ruleSet": {
+    "migrationRules": [
+      {
+        "name": "changeSsnToSocialSecurityNumber",
+        "kind": "TRANSFORM",
+        "type": "JSONATA",
+        "doc": "Consumer is on new major version and gets socialSecurityNumber while producer sends ssn.",
+        "mode": "UPGRADE",
+        "expr": "$merge([$sift($, function($v, $k) {$k != 'ssn'}), {'socialSecurityNumber': $.'ssn'}])"
+      },
+      {
+        "name": "changeSocialSecurityNumberToSsn",
+        "kind": "TRANSFORM",
+        "type": "JSONATA",
+        "doc": "Consumer is on old major version and gets ssn while producer sends socialSecurityNumber.",
+        "mode": "DOWNGRADE",
+        "expr": "$merge([$sift($, function($v, $k) {$k != 'socialSecurityNumber'}), {'ssn': $.'socialSecurityNumber'}])"
+      }
+    ]
+  }
+}
