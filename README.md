@@ -116,7 +116,7 @@ docker-compose -f provisioning/docker-compose.yml exec broker kafka-topics --boo
 ## Registering the schema v1
 
 ```shell
-jq -n --rawfile schema migration/data-contract-migration-v2/src/main/resources/schema/membership.v1.avsc '{schema: $schema, metadata: { properties: { app_version: 1 }}}' |  curl -X POST -d @- -H "Content-Type: application/json" --silent http://localhost:8081/subjects/membership-migration-value/versions  | jq
+jq -n --rawfile schema migration/data-contract-migration-v1/src/main/resources/schema/membership.v1.avsc '{schema: $schema, metadata: { properties: { app_version: 1 }}}' |  curl -X POST -d @- -H "Content-Type: application/json" --silent http://localhost:8081/subjects/membership-migration-value/versions  | jq
 ```
 
 ## Registering the schema v2 (breaking changes)
@@ -124,7 +124,7 @@ jq -n --rawfile schema migration/data-contract-migration-v2/src/main/resources/s
 We try to register an incompatible change
 
 ```shell
-jq -n --rawfile schema migration/data-contract-migration-v1/src/main/resources/schema/membership.v2.avsc '{schema: $schema, metadata: { properties: { app_version: 2 }}}' |  curl -X POST -d @- -H "Content-Type: application/json" --silent http://localhost:8081/subjects/membership-migration-value/versions  | jq
+jq -n --rawfile schema migration/data-contract-migration-v2/src/main/resources/schema/membership.v2.avsc '{schema: $schema, metadata: { properties: { app_version: 2 }}}' |  curl -X POST -d @- -H "Content-Type: application/json" --silent http://localhost:8081/subjects/membership-migration-value/versions  | jq
 ```
 
 The SR returns an error message as we are trying to register a breaking error change.
@@ -143,9 +143,16 @@ curl -XPUT -d '{ "compatibilityGroup": "app_version" }' -H "Content-Type: applic
 
 Let's try to register again the breaking schema changes
 ```
-jq -n --rawfile schema migration/data-contract-migration-v1/src/main/resources/schema/membership.v2.avsc '{schema: $schema, metadata: { properties: { app_version: 2 }}}' |  curl -X POST -d @- -H "Content-Type: application/json" --silent http://localhost:8081/subjects/membership-migration-value/versions  | jq
+jq -n --rawfile schema migration/data-contract-migration-v2/src/main/resources/schema/membership.v2.avsc '{schema: $schema, metadata: { properties: { app_version: 2 }}}' |  curl -X POST -d @- -H "Content-Type: application/json" --silent http://localhost:8081/subjects/membership-migration-value/versions  | jq
 ```
- 
+
+Let's register the migration rules
+```shell
+curl http://localhost:8081/subjects/membership-migration-value/versions \
+--header "Content-Type: application/json" --header "Accept: application/json" \
+--data "@migration/data-contract-migration-v2/src/main/resources/membership-migration-rules.json" | jq
+```
+
 ## Observing migration rules in action
 
 Let's open 4 distinct terminal shell to observe Producers/Consumers of both V1/V2 in action
@@ -156,20 +163,20 @@ We do expect that consumers are able to read messages produced with both schema 
 * Record transformations are applied to downgrade Records V2->V1 when a Consumer V1 is reading a V2 record
 * Record transformations are applied to upgrade Records V1->V2 when a Consumer V2 is reading a V1 record
   
-### Consumer V1 ###
+### Consumer at compatibility group 1 ###
 
 
 ```shell
 java -cp migration/data-contract-migration-v1/target/data-contract-migration-v1-1.0.0-SNAPSHOT-jar-with-dependencies.jar  com.paoven.datacontracts.migrations.ConsumerV1
 ```
 
-### Consumer V2 ###
+### Consumer at compatibility group 2 ###
 
 ```shell
 java -cp migration/data-contract-migration-v2/target/data-contract-migration-v2-1.0.0-SNAPSHOT-jar-with-dependencies.jar  com.paoven.datacontracts.migrations.ConsumerV2
 ```
 
-### Producer v1
+### Producer at compatibility group 1
 ```shell
 java -cp  migration/data-contract-migration-v1/target/data-contract-migration-v1-1.0.0-SNAPSHOT-jar-with-dependencies.jar com.paoven.datacontracts.migrations.ProducerV1
 ```
@@ -181,9 +188,10 @@ g
 [ProducerV1:58] - ================
 
 ```
-### Producer v2
+### Producer at compatibility group 2
 ```shell
-oo```
+java -cp  migration/data-contract-migration-v2/target/data-contract-migration-v2-1.0.0-SNAPSHOT-jar-with-dependencies.jar com.paoven.datacontracts.migrations.ProducerV2
+```
 
 Let's enter 'g' at command prompt at least one time to create a V1 Membership record
 
