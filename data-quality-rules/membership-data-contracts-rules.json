@@ -1,0 +1,38 @@
+{
+  "metadata": {
+    "properties": {
+      "owner": "Subscriptions Department",
+      "owner_email": "subscriptions@example.com"
+    },
+    "tags": {
+      "email": [
+        "PII"
+      ]
+    }
+  },
+  "ruleSet": {
+    "domainRules": [
+      {
+        "name": "populate-empty-ssn",
+        "doc": "Rule checks if ssn is empty and replaces it with 'unspecified' if it is.",
+        "kind": "TRANSFORM",
+        "type": "CEL_FIELD",
+        "mode": "WRITE",
+        "expr": "name == 'ssn' ; value == '' ? 'unspecified' : value"
+      },
+      {
+        "name": "membership-check-email",
+        "doc": "Veryfing valid email address is provided",
+        "kind": "CONDITION",
+        "type": "CEL",
+        "mode": "WRITE",
+        "expr": "message.email.matches(r'.+@.+\\..+')",
+        "onFailure": "DLQ",
+        "params": {
+          "dlq.topic": "membership-dlq"
+        },
+        "disabled": false
+      }
+    ]
+  }
+}

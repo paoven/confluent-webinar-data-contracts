@@ -37,29 +37,15 @@ Let's observe the registered schema
 curl http://localhost:8081/subjects/membership-value/versions/latest
 ```
 
-## Registering Metadata Rules
+## Registering Metadata and Data Quality rules
 
 ```shell
 curl http://localhost:8081/subjects/membership-value/versions \
 --header "Content-Type: application/json" --header "Accept: application/json" \
---data "@data-quality-rules/membership-metadata-rules.json" | jq
+--data "@data-quality-rules/membership-data-contracts-rules.json" | jq
 ```
 
-A new schema version has been registered with the additional metadata
-
-```shell
-http://localhost:8081/subjects/membership-value/versions/latest
-```
-
-## Registering Data Quality Rules
-
-```shell
-curl http://localhost:8081/subjects/membership-value/versions \
---header "Content-Type: application/json" --header "Accept: application/json" \
---data "@data-quality-rules/membership-dataquality-rules.json" | jq
-```
-
-A new schema version has been registered with the additional metadata
+A new schema version has been registered with the additional metadata and data quality rules
 
 ```shell
 curl http://localhost:8081/subjects/membership-value/versions/latest
@@ -75,20 +61,22 @@ Open 3 terminals:
 
 ### Membership topic producer
 ```shell
-kafka-avro-console-producer --topic membership  --bootstrap-server localhost:9092  --property schema.registry.url=http://localhost:8081 --property auto.register.schemas=false --property avro.use.logical.type.converters=true --property value.schema.id=`curl -s http://localhost:8081/subjects/membership-value/versions/latest | jq ".id"` --property bootstrap.servers=localhost:9092 --property bootstrap.servers=localhost:9092 --property dlq.auto.flush=true 
+SCHEMA_ID=`curl -s http://localhost:8081/subjects/membership-value/versions/latest | jq ".id"`
+docker-compose -f provisioning/docker-compose.yml exec -e SCHEMA_ID=$SCHEMA_ID schema-registry sh -c 'kafka-avro-console-producer --topic membership  --bootstrap-server broker:29092  --property schema.registry.url=http://schema-registry:8081 --property auto.register.schemas=false --property avro.use.logical.type.converters=true --property value.schema.id=$SCHEMA_ID --property bootstrap.servers=broker:29092 --property dlq.auto.flush=true' 
 ```
-Let's produce a valid and an invalid record
+Let's produce a valid and an invalid records
 
 ```shell
-{"start_date":20120,"end_date":20150,"email":"admin@example.com","ssn":"123-456-789"}
-{"start_date":20120,"end_date":20150,"email":"admin<at>example.com","ssn":"123-456-789"}
+{"start_date":20120,"end_date":20150,"email":"admin@example.com","ssn":"123-456-789"}      # valid
+{"start_date":20120,"end_date":20150,"email":"admin@example.com","ssn":""}                 # empty ssn should be replaced with custom default
+{"start_date":20120,"end_date":20150,"email":"admin<at>example.com","ssn":"123-456-789"}   # invalid record, email value is rejected
 ```
 
 ### Membership topic consumer
 
 Valid records are consumer and printed 
 ```shell
-kafka-avro-console-consumer --topic membership  --bootstrap-server localhost:9092  --property schema.registry.url=http://localhost:8081 --from-beginning --property use.latest.version=true
+docker-compose -f provisioning/docker-compose.yml exec schema-registry kafka-avro-console-consumer --topic membership  --bootstrap-server broker:29092  --property schema.registry.url=http://schema-registry:8081 --from-beginning --property use.latest.version=true
 ```
 
 ### Membership DLQ topic consumer
@@ -96,7 +84,7 @@ kafka-avro-console-consumer --topic membership  --bootstrap-server localhost:909
 Invalid records are routed to the DLQ topic, note that headers show message rejection reason
 
 ```shell
-kafka-console-consumer --topic membership-dlq  --bootstrap-server localhost:9092  --property schema.registry.url=http://localhost:8081 --from-beginning --property print.headers=true --from-beginning
+docker-compose -f provisioning/docker-compose.yml exec broker kafka-console-consumer --topic membership-dlq  --bootstrap-server broker:29092  --property schema.registry.url=http://schema-registry:8081 --from-beginning --property print.headers=true --from-beginning
 ```
 
 # Migration Demo
