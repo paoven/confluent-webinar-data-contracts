@@ -22,7 +22,7 @@
       },
       {
         "name": "membership-check-email",
-        "doc": "Veryfing valid email address is provided",
+        "doc": "Verifying valid email address is provided",
         "kind": "CONDITION",
         "type": "CEL",
         "mode": "WRITE",
